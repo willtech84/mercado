@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#07101f" />
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Lista de Compras • Nível 1.2.5.1</title>
+  <title>Lista de Compras • Nível 1.2.5.2</title>
   <style>
     :root{
       --bg:#07101f; --card:#0e1a33; --text:#e5e7eb; --muted:#9aa8c2;
@@ -123,7 +123,7 @@
     <div class="leftHead">
       <div class="logo"></div>
       <div class="title">
-        <h1>Lista de Compras • Nível 1.2.5.1</h1>
+        <h1>Lista de Compras • Nível 1.2.5.2</h1>
         <p class="sub" id="subTitle">Hospedado (GitHub/Netlify): câmera + offline.</p>
       </div>
     </div>
@@ -607,6 +607,37 @@ APP.scanClear = function(){ $("scanCode").value=""; scanStatus("limpo."); };
 
 /* Events */
 document.addEventListener("DOMContentLoaded", ()=>{
+  // 1.2.5.2 FIX: handler direto no matchBox (mais confiável em PWA/Samsung).
+  (function(){
+    const box = document.getElementById("matchBox");
+    if(!box) return;
+    let last = 0;
+    function onTap(e){
+      const t = e.target?.closest?.("[data-act='addFromSearch']");
+      if(!t) return;
+      if(e.cancelable) e.preventDefault();
+      e.stopPropagation?.();
+      const now = Date.now();
+      if(now - last < 250) return;
+      last = now;
+
+      try{
+        const pid = t.dataset.pid;
+        if(window.APP?.addFromCatalog && pid) APP.addFromCatalog(pid);
+        else if(typeof addFromCatalog === "function" && pid) addFromCatalog(pid);
+
+        const sc = document.getElementById("searchCatalog");
+        if(sc) sc.value = "";
+        if(typeof renderCatalogMatches === "function") renderCatalogMatches();
+        if(typeof renderMatches === "function") renderMatches();
+      }catch(err){
+        console.warn("matchBox tap error:", err);
+      }
+    }
+    box.addEventListener("click", onTap, {passive:false});
+    box.addEventListener("touchend", onTap, {passive:false});
+  })();
+
   // 1.2.5.1 FIX (Netlify/PWA): alguns dispositivos não disparam "pointerup" de forma consistente.
   // Garantimos também "click" e "touchend" para as ações em elementos com data-act.
   function __handleActionEvent(e){
