@@ -1,5 +1,5 @@
 // Offline cache + update friendly (1.2.5.2)
-const CACHE = "lista-compras-v1.2.5.3";
+const CACHE = "lista-compras-v1.2.5.4";
 const CORE = [
   "./",
   "./index.html",

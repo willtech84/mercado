@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#07101f" />
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Lista de Compras • Nível 1.2.5.3</title>
+  <title>Lista de Compras • Nível 1.2.5.4</title>
   <style>
     :root{
       --bg:#07101f; --card:#0e1a33; --text:#e5e7eb; --muted:#9aa8c2;
@@ -123,7 +123,7 @@
     <div class="leftHead">
       <div class="logo"></div>
       <div class="title">
-        <h1>Lista de Compras • Nível 1.2.5.3</h1>
+        <h1>Lista de Compras • Nível 1.2.5.4</h1>
         <p class="sub" id="subTitle">Hospedado (GitHub/Netlify): câmera + offline.</p>
       </div>
     </div>
@@ -131,6 +131,7 @@
       <div class="chip ok" id="chipJS">JS: OK</div>
       <div class="chip" id="chipCatalogo">Catálogo: 0</div>
       <div class="chip" id="chipCompras">Compras: 0</div>
+      <div class="chip" id="chipItens">Itens: 0</div>
       <div class="chip" id="chipAutoSoma">Auto-soma: ON</div>
     </div>
   </div>
@@ -335,6 +336,12 @@ function parseBRMoney(str){
   const v = Number(cleaned);
   return Number.isFinite(v) ? v : NaN;
 }
+
+function parsePriceAny(v){
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const n = parseBRMoney(v);
+  return Number.isFinite(n) ? n : 0;
+}
 function uid(){ return Math.random().toString(16).slice(2)+Date.now().toString(16); }
 function todayISO(){
   const d = new Date();
@@ -378,11 +385,13 @@ function normalizeState(st){
   for(const p of st.catalog){
     if(typeof p.fav !== "boolean") p.fav=false;
     if(typeof p.barcode !== "string") p.barcode="";
+    p.preco = parsePriceAny(p.preco);
   }
   st.purchases ||= [];
   st.autoSum = (st.autoSum!==false);
   st.current ||= makeEmptyCurrent();
   st.current.items ||= [];
+  for(const it of st.current.items){ it.price = parsePriceAny(it.price); it.qty = Number.isFinite(Number(it.qty)) ? Number(it.qty) : 1; it.checked = (it.checked!==false); }
   st.settings ||= { scanMode:"inc" };
   if(!st.settings.scanMode) st.settings.scanMode="inc";
   return st;
@@ -404,6 +413,9 @@ let state = load();
 function syncChips(){
   $("chipCatalogo").textContent = "Catálogo: " + state.catalog.length;
   $("chipCompras").textContent = "Compras: " + state.purchases.length;
+  const count = state.current?.items?.length || 0;
+  const chipItens = $("chipItens");
+  if(chipItens) chipItens.textContent = "Itens: " + count;
   $("chipAutoSoma").textContent = "Auto-soma: " + (state.autoSum ? "ON":"OFF");
 }
 function showTab(tab){
@@ -435,12 +447,12 @@ function findMatches(q){
 function renderMatches(){
   const matches = findMatches($("searchCatalog").value);
   $("matchBox").innerHTML = matches.map(p=>`
-    <div class="item" style="cursor:pointer" onclick="ADD('${p.id}'); try{document.getElementById('searchCatalog').value='';}catch(e){}; try{renderMatches();}catch(e){}">
+    <div class="item" style="cursor:pointer" onclick="ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}">
       <div class="grow">
         <div class="name">${escapeHtml(p.nome)}</div>
         <div class="meta">Preço: <span class="pill price">${money(p.preco)}</span> ${p.barcode?`<span class="badge good">EAN</span>`:""}</div>
       </div>
-      <button type="button" class="primary" onclick="event.stopPropagation(); ADD('${p.id}'); try{document.getElementById('searchCatalog').value='';}catch(e){}; try{renderMatches();}catch(e){}">+ Add</button>
+      <button type="button" class="primary" onclick="event.stopPropagation(); ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}">+ Add</button>
     </div>
   `).join("");
 }
@@ -466,11 +478,12 @@ function renderList(){
     </div>
   `).join("") || `<div class="muted">Nenhum item na lista ainda.</div>`;
   renderTotal();
+  syncChips();
 }
 function addFromCatalog(pid){
   const p = state.catalog.find(x=>x.id===pid);
   if(!p) return;
-  const it = { id:uid(), productId:p.id, name:p.nome, price:Number(p.preco), qty:1, checked:true };
+  const it = { id:uid(), productId:p.id, name:p.nome, price:parsePriceAny(p.preco), qty:1, checked:true };
   state.current.items.unshift(it);
   save();
   renderList();
