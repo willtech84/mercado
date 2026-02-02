@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#07101f" />
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Lista de Compras • Nível 1.2.5.2</title>
+  <title>Lista de Compras • Nível 1.2.5.3</title>
   <style>
     :root{
       --bg:#07101f; --card:#0e1a33; --text:#e5e7eb; --muted:#9aa8c2;
@@ -123,7 +123,7 @@
     <div class="leftHead">
       <div class="logo"></div>
       <div class="title">
-        <h1>Lista de Compras • Nível 1.2.5.2</h1>
+        <h1>Lista de Compras • Nível 1.2.5.3</h1>
         <p class="sub" id="subTitle">Hospedado (GitHub/Netlify): câmera + offline.</p>
       </div>
     </div>
@@ -353,6 +353,14 @@ function toast(msg){
   toast._t = setTimeout(()=>el.classList.remove("show"), 1800);
 }
 
+
+/* Helper global para adicionar item (funciona em qualquer navegador/PWA) */
+function ADD(pid){
+  try{
+    if(window.APP?.addFromCatalog) return APP.addFromCatalog(pid);
+    if(typeof addFromCatalog === "function") return addFromCatalog(pid);
+  }catch(e){}
+}
 /* Storage */
 const KEY = "shopping_price_app_v1_2_5";
 function seedCatalog(){
@@ -427,12 +435,12 @@ function findMatches(q){
 function renderMatches(){
   const matches = findMatches($("searchCatalog").value);
   $("matchBox").innerHTML = matches.map(p=>`
-    <div class="item" data-act="addFromSearch" data-pid="${p.id}" style="cursor:pointer">
+    <div class="item" style="cursor:pointer" onclick="ADD('${p.id}'); try{document.getElementById('searchCatalog').value='';}catch(e){}; try{renderMatches();}catch(e){}">
       <div class="grow">
         <div class="name">${escapeHtml(p.nome)}</div>
         <div class="meta">Preço: <span class="pill price">${money(p.preco)}</span> ${p.barcode?`<span class="badge good">EAN</span>`:""}</div>
       </div>
-      <span class="pill">+ Add</span>
+      <button type="button" class="primary" onclick="event.stopPropagation(); ADD('${p.id}'); try{document.getElementById('searchCatalog').value='';}catch(e){}; try{renderMatches();}catch(e){}">+ Add</button>
     </div>
   `).join("");
 }
