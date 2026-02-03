@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#07101f" />
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Lista de Compras • Nível 1.2.5.4</title>
+  <title>Lista de Compras • Nível 1.2.5.5</title>
   <style>
     :root{
       --bg:#07101f; --card:#0e1a33; --text:#e5e7eb; --muted:#9aa8c2;
@@ -123,7 +123,7 @@
     <div class="leftHead">
       <div class="logo"></div>
       <div class="title">
-        <h1>Lista de Compras • Nível 1.2.5.4</h1>
+        <h1>Lista de Compras • Nível 1.2.5.5</h1>
         <p class="sub" id="subTitle">Hospedado (GitHub/Netlify): câmera + offline.</p>
       </div>
     </div>
@@ -161,6 +161,18 @@
         <input id="searchCatalog" placeholder="Digite: arroz, leite, sabão..." />
         <div class="list" id="matchBox"></div>
         <div class="muted">Toque no resultado: entra na lista. Total atualiza na hora.</div>
+
+        <div class="sep"></div>
+        <div class="row" style="align-items:center; justify-content:space-between">
+          <div style="display:flex; flex-direction:column; gap:2px">
+            <div style="font-weight:700; font-size:13px">Sua lista agora</div>
+            <div class="tiny" id="listHint">Itens adicionados aparecem aqui.</div>
+          </div>
+          <div class="btns">
+            <button type="button" id="btnScrollLista">Ver lista</button>
+          </div>
+        </div>
+        <div class="list" id="currentListTop"></div>
       </div>
 
       <div class="sep"></div>
@@ -428,7 +440,10 @@ function showTab(tab){
 
 /* Total */
 function computeTotal(){
-  return state.current.items.reduce((acc,it)=> acc + (it.checked ? (it.price*it.qty) : 0), 0);
+  return (state.current.items||[]).reduce((acc,it)=>{
+    const line = (it && it.checked) ? (Number(it.price) * Number(it.qty)) : 0;
+    return acc + (Number.isFinite(line) ? line : 0);
+  }, 0);
 }
 function renderTotal(){ $("totalNow").textContent = money(computeTotal()); }
 
@@ -447,19 +462,19 @@ function findMatches(q){
 function renderMatches(){
   const matches = findMatches($("searchCatalog").value);
   $("matchBox").innerHTML = matches.map(p=>`
-    <div class="item" style="cursor:pointer" onclick="ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}">
+    <div class="item" style="cursor:pointer" onclick="ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}; try{ if(typeof renderList==='function') renderList(); }catch(e){}">
       <div class="grow">
         <div class="name">${escapeHtml(p.nome)}</div>
         <div class="meta">Preço: <span class="pill price">${money(p.preco)}</span> ${p.barcode?`<span class="badge good">EAN</span>`:""}</div>
       </div>
-      <button type="button" class="primary" onclick="event.stopPropagation(); ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}">+ Add</button>
+      <button type="button" class="primary" onclick="event.stopPropagation(); ADD('${p.id}'); try{const sc=document.getElementById('searchCatalog'); if(sc){sc.value=''; sc.blur();}}catch(e){}; try{renderMatches();}catch(e){}; try{ if(typeof renderList==='function') renderList(); }catch(e){}">+ Add</button>
     </div>
   `).join("");
 }
 
 /* Current list */
 function renderList(){
-  $("currentList").innerHTML = state.current.items.map(it=>`
+  const htmlList = state.current.items.map(it=>`
     <div class="item">
       <input type="checkbox" ${it.checked?"checked":""} data-act="toggle" data-id="${it.id}" style="margin-top:4px; width:20px; height:20px"/>
       <div class="grow">
@@ -477,6 +492,9 @@ function renderList(){
       </div>
     </div>
   `).join("") || `<div class="muted">Nenhum item na lista ainda.</div>`;
+  $("currentList").innerHTML = htmlList;
+  const top = document.getElementById("currentListTop");
+  if(top) top.innerHTML = htmlList;
   renderTotal();
   syncChips();
 }
@@ -487,6 +505,8 @@ function addFromCatalog(pid){
   state.current.items.unshift(it);
   save();
   renderList();
+  try{ const h=document.getElementById("listHint"); if(h) h.textContent="Toque no checkbox para somar. Total soma apenas marcados."; }catch(e){}
+  try{ const top=document.getElementById("currentListTop"); if(top) top.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
   toast(`Adicionado: <b>${escapeHtml(p.nome)}</b>`);
 }
 function addOrInc(pid){
